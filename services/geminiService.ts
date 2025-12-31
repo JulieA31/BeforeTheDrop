@@ -1,8 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import { CheckIn } from "../types";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+const genAI = new GoogleGenAI(apiKey); // Note : Vérifie si c'est GoogleGenAI(apiKey) ou { apiKey } selon ta version
 
 export const getGentleInsight = async (recentCheckIns: CheckIn[]): Promise<string> => {
   if (!apiKey) return "Clé API non configurée.";
