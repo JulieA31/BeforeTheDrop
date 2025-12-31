@@ -192,7 +192,7 @@ const AppContent = () => {
                </button>
                <button onClick={() => setView('regulation')} className="bg-slate-800 p-4 rounded-xl flex flex-col items-center gap-2">
                  <Cloud className="text-green-400" />
-                 <span className="text-xs">Respiration</span>
+                 <span className="text-xs">Régulation</span>
                </button>
             </div>
           </div>
