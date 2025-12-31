@@ -57,9 +57,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
 
       <div className="z-10 w-full max-w-xs flex flex-col items-center">
         <img 
-            src="logo2.png" 
-            alt="Before the Drop Logo" 
-            className="w-24 h-24 object-cover rounded-full shadow-2xl mb-6 border border-white/10 scale-110"
+          src="logo2.png" 
+          alt="Before the Drop Logo" 
+          className="w-24 h-24 object-cover rounded-full shadow-2xl mb-6 border border-white/10 scale-[1.6]"
         />
         
         <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-calm-green mb-2">
