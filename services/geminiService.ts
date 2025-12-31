@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/generative-ai";
 import { CheckIn } from "../types";
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
