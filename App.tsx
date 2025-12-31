@@ -26,6 +26,7 @@ import {
 
 // Wrapper component to handle content once Auth is initialized
 const AppContent = () => {
+  console.log("L'application démarre ! User est :", currentUser);
   const { currentUser } = useAuth();
   const [view, setView] = useState<ViewState>('auth'); 
   const [showCheckIn, setShowCheckIn] = useState(false);
