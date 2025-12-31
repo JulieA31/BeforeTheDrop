@@ -29,3 +29,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {loading ? <div>Chargement de l'application (Vérification Firebase...)</div> : children}
     </AuthContext.Provider>
   );
+  };
