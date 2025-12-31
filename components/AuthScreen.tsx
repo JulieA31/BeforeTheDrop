@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+limport React, { useState } from 'react';
 import { ArrowRight, Mail, Lock, AlertCircle, Loader } from 'lucide-react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
@@ -59,7 +59,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
         <img 
           src="logo2.png" 
           alt="Before the Drop Logo" 
-          className="w-24 h-24 object-cover rounded-full shadow-2xl mb-6 border border-white/10 scale-[1]"
+          
         />
         
         <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-calm-green mb-2">
