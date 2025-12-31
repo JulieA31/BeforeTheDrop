@@ -38,7 +38,7 @@ export interface UserPreferences {
   sensitivity: 'low' | 'medium' | 'high';
 }
 
-export type ViewState = 'auth' | 'onboarding' | 'dashboard' | 'checkin' | 'history' | 'regulation' | 'sensory-scan';
+export type ViewState = 'auth' | 'onboarding' | 'dashboard' | 'checkin' | 'history' | 'regulation' | 'sensory-scan' | 'recovery';
 
 export enum RegulationType {
   BREATHING = 'BREATHING',

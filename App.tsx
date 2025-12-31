@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Plus, Home, Sparkles, Wind, Zap, Activity, TriangleAlert } from 'lucide-react';
+import { BarChart3, Plus, Home, Sparkles, Wind, Zap, Activity, TriangleAlert, LogOut, RefreshCcw } from 'lucide-react';
 import { CheckIn, ViewState, AppStatus, DailySpoons } from './types';
 import { CheckInForm } from './components/CheckInForm';
 import { Gauge } from './components/Gauge';
@@ -10,64 +10,79 @@ import { SpoonTracker } from './components/SpoonTracker';
 import { SensoryScan } from './components/SensoryScan';
 import { AuthScreen } from './components/AuthScreen';
 import { Onboarding } from './components/Onboarding';
+import { RecoveryMode } from './components/RecoveryMode';
 import { getGentleInsight } from './services/geminiService';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { signOut } from 'firebase/auth';
+import { auth } from './firebaseConfig';
+import { 
+  subscribeToCheckIns, 
+  addCheckInToDb, 
+  subscribeToSpoons, 
+  saveSpoonsToDb, 
+  checkOnboardingStatus, 
+  setOnboardingSeen 
+} from './services/db';
 
-export default function App() {
-  const [view, setView] = useState<ViewState>('auth'); // Default to auth while loading
+// Wrapper component to handle content once Auth is initialized
+const AppContent = () => {
+  const { currentUser } = useAuth();
+  const [view, setView] = useState<ViewState>('auth'); 
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
+  
+  // Data State
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [spoons, setSpoons] = useState<DailySpoons>({ date: new Date().toDateString(), total: 10, remaining: 10 });
+  
   const [insight, setInsight] = useState<string | null>(null);
   const [loadingInsight, setLoadingInsight] = useState(false);
-  const [userName, setUserName] = useState<string>('');
+  const [loadingData, setLoadingData] = useState(true);
 
-  // Initial Data Load & Auth Check
+  // Firestore Subscriptions
   useEffect(() => {
-    // 1. Check User
-    const savedUser = localStorage.getItem('btd_username');
-    const hasSeenOnboarding = localStorage.getItem('btd_has_seen_onboarding');
-
-    // 2. Load Data
-    const savedCheckins = localStorage.getItem('btd_checkins');
-    const savedSpoons = localStorage.getItem('btd_spoons');
-    
-    if (savedCheckins) {
-      try { setCheckIns(JSON.parse(savedCheckins)); } catch (e) {}
-    }
-
-    if (savedSpoons) {
-      try {
-        const parsed = JSON.parse(savedSpoons);
-        if (parsed.date !== new Date().toDateString()) {
-          setSpoons({ date: new Date().toDateString(), total: parsed.total || 10, remaining: parsed.total || 10 });
-        } else {
-          setSpoons(parsed);
-        }
-      } catch (e) {}
-    }
-
-    // 3. Determine View
-    if (!savedUser) {
+    if (!currentUser) {
       setView('auth');
-    } else {
-      setUserName(savedUser);
-      if (!hasSeenOnboarding) {
-        setView('onboarding');
-      } else {
-        setView('dashboard');
-      }
+      return;
     }
-  }, []);
 
-  // Save data on change
-  useEffect(() => {
-    if(checkIns.length > 0) localStorage.setItem('btd_checkins', JSON.stringify(checkIns));
-  }, [checkIns]);
+    setLoadingData(true);
 
-  useEffect(() => {
-    localStorage.setItem('btd_spoons', JSON.stringify(spoons));
-  }, [spoons]);
+    // 1. Check Onboarding
+    checkOnboardingStatus(currentUser.uid).then((seen) => {
+      if (!seen) setView('onboarding');
+      else setView('dashboard');
+    });
+
+    // 2. Subscribe to CheckIns
+    const unsubscribeCheckIns = subscribeToCheckIns(currentUser.uid, (data) => {
+      setCheckIns(data);
+    });
+
+    // 3. Subscribe to Spoons
+    const unsubscribeSpoons = subscribeToSpoons(currentUser.uid, (data) => {
+      if (data) {
+        // Reset daily logic if needed
+        if (data.date !== new Date().toDateString()) {
+           const newSpoons = { date: new Date().toDateString(), total: data.total || 10, remaining: data.total || 10 };
+           saveSpoonsToDb(currentUser.uid, newSpoons);
+           // Subscription will update state automatically
+        } else {
+           setSpoons(data);
+        }
+      } else {
+        // Init default spoons if doesn't exist
+        const defaultSpoons = { date: new Date().toDateString(), total: 10, remaining: 10 };
+        saveSpoonsToDb(currentUser.uid, defaultSpoons);
+      }
+      setLoadingData(false);
+    });
+
+    return () => {
+      unsubscribeCheckIns();
+      unsubscribeSpoons();
+    };
+  }, [currentUser]);
 
   // Fetch insight when dashboard is viewed and we have data
   useEffect(() => {
@@ -79,32 +94,52 @@ export default function App() {
 
   const fetchInsight = async () => {
     setLoadingInsight(true);
-    const sorted = [...checkIns].sort((a, b) => b.timestamp - a.timestamp);
-    const result = await getGentleInsight(sorted.slice(0, 5));
+    // Sort logic handled by Firestore query usually, but double check
+    const result = await getGentleInsight(checkIns.slice(0, 5));
     setInsight(result);
     setLoadingInsight(false);
   };
 
-  const handleLogin = (name: string) => {
-    localStorage.setItem('btd_username', name);
-    setUserName(name);
-    setView('onboarding');
-  };
-
-  const handleOnboardingFinish = () => {
-    localStorage.setItem('btd_has_seen_onboarding', 'true');
+  const handleOnboardingFinish = async () => {
+    if (currentUser) {
+      await setOnboardingSeen(currentUser.uid);
+    }
     setView('dashboard');
   };
 
-  const handleSaveCheckIn = (data: Omit<CheckIn, 'id' | 'timestamp'>) => {
-    const newCheckIn: CheckIn = {
+  const handleSaveCheckIn = async (data: Omit<CheckIn, 'id' | 'timestamp'>) => {
+    if (!currentUser) return;
+    
+    // Optimistic update handled by Firestore subscription, but we send it off
+    await addCheckInToDb(currentUser.uid, {
       ...data,
-      id: crypto.randomUUID(),
       timestamp: Date.now(),
-    };
-    setCheckIns(prev => [newCheckIn, ...prev]);
+    });
+
     setShowCheckIn(false);
     setInsight(null);
+  };
+
+  const handleUpdateSpoons = (newRemaining: number) => {
+    if (!currentUser) return;
+    saveSpoonsToDb(currentUser.uid, { ...spoons, remaining: newRemaining });
+  };
+
+  const handleUpdateTotalSpoons = (newTotal: number) => {
+    if (!currentUser) return;
+    // When updating total, decide if we reset remaining or scale it. 
+    // Simple approach: just update total and keep remaining bounded.
+    saveSpoonsToDb(currentUser.uid, { ...spoons, total: newTotal, remaining: Math.min(spoons.remaining, newTotal) });
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      setView('auth');
+      setCheckIns([]); 
+    } catch (error) {
+      console.error("Error signing out", error);
+    }
   };
 
   const getAppStatus = (current: CheckIn | undefined, spoonState: DailySpoons): AppStatus => {
@@ -129,13 +164,11 @@ export default function App() {
     return 'green';
   };
 
-  const current = checkIns.length > 0 
-    ? checkIns.sort((a, b) => b.timestamp - a.timestamp)[0] 
-    : undefined;
-
+  const current = checkIns.length > 0 ? checkIns[0] : undefined;
   const status = getAppStatus(current, spoons);
 
   const getBackgroundClass = () => {
+    if (view === 'recovery') return 'bg-[#050a14]';
     switch (status) {
       case 'red': return 'bg-gradient-to-b from-red-950 via-[#1e0a0a] to-bg-app';
       case 'orange': return 'bg-gradient-to-b from-amber-900/40 via-[#2a1b10] to-bg-app';
@@ -147,7 +180,15 @@ export default function App() {
   // --- Views Handling ---
 
   if (view === 'auth') {
-    return <AuthScreen onLogin={handleLogin} />;
+    return <AuthScreen onLoginSuccess={() => { /* Effect will handle transition */ }} />;
+  }
+
+  if (loadingData && view !== 'recovery' && view !== 'sensory-scan') {
+    return (
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+        <RefreshCcw className="animate-spin text-calm-green" size={32} />
+      </div>
+    );
   }
 
   if (view === 'onboarding') {
@@ -160,7 +201,22 @@ export default function App() {
     <div className={`min-h-screen ${getBackgroundClass()} text-gray-100 flex flex-col pb-20 max-w-lg mx-auto shadow-2xl overflow-hidden relative transition-all duration-1000 ease-in-out`}>
       
       {/* SOS Overlay */}
-      {showSOS && <SOSCard onClose={() => setShowSOS(false)} />}
+      {showSOS && (
+        <SOSCard 
+          onClose={() => setShowSOS(false)} 
+          onActivateRecovery={() => {
+            setShowSOS(false);
+            setView('recovery');
+          }}
+        />
+      )}
+
+      {/* Recovery Mode Overlay (takes over main content) */}
+      {view === 'recovery' && (
+        <div className="fixed inset-0 z-40 bg-[#050a14]">
+          <RecoveryMode onExit={() => setView('dashboard')} />
+        </div>
+      )}
 
       {/* Sensory Scan Overlay */}
       {view === 'sensory-scan' && (
@@ -170,34 +226,45 @@ export default function App() {
         />
       )}
 
-      {/* Header */}
-      <header className="p-6 pb-2 flex justify-between items-center z-10">
-        <div className="flex items-center gap-3">
-          <img 
-            src="logo2.png" 
-            alt="Logo" 
-            className="w-12 h-12 object-contain rounded-full shadow-lg border border-white/10"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-              e.currentTarget.nextElementSibling?.classList.remove('hidden');
-            }}
-          />
-          <div>
-             <h1 className="text-sm font-bold text-gray-300">Bonjour, {userName}</h1>
-             <p className="text-[10px] text-gray-500">{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+      {/* Header - Hidden in Recovery Mode */}
+      {view !== 'recovery' && (
+        <header className="p-6 pb-2 flex justify-between items-center z-10">
+          <div className="flex items-center gap-3">
+            <img 
+              src="logo2.png" 
+              alt="Logo" 
+              className="w-12 h-12 object-contain rounded-full shadow-lg border border-white/10"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+            <div>
+               <h1 className="text-sm font-bold text-gray-300">Bonjour, {currentUser?.displayName || 'Voyageur'}</h1>
+               <p className="text-[10px] text-gray-500">{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+            </div>
           </div>
-        </div>
-        
-        <button 
-          onClick={() => setShowSOS(true)}
-          className="bg-red-500/10 border border-red-500/50 text-red-400 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-red-500/20 transition-colors animate-pulse"
-        >
-          SOS
-        </button>
-      </header>
+          
+          <div className="flex items-center gap-2">
+            <button 
+                onClick={handleSignOut}
+                className="bg-slate-800 border border-slate-700 text-slate-400 p-2 rounded-lg hover:text-white transition-colors"
+                title="Déconnexion"
+            >
+                <LogOut size={16} />
+            </button>
+            <button 
+                onClick={() => setShowSOS(true)}
+                className="bg-red-500/10 border border-red-500/50 text-red-400 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-red-500/20 transition-colors animate-pulse"
+            >
+                SOS
+            </button>
+          </div>
+        </header>
+      )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6 pt-2 z-10">
+      <main className={`flex-1 overflow-y-auto p-6 pt-2 z-10 ${view === 'recovery' ? 'hidden' : ''}`}>
         
         {view === 'dashboard' && (
           <div className="space-y-6 animate-fade-in">
@@ -205,8 +272,8 @@ export default function App() {
             <SpoonTracker 
               total={spoons.total} 
               remaining={spoons.remaining} 
-              onUpdate={(val) => setSpoons(prev => ({ ...prev, remaining: val }))}
-              onUpdateTotal={(val) => setSpoons(prev => ({ ...prev, total: val, remaining: val }))}
+              onUpdate={handleUpdateSpoons}
+              onUpdateTotal={handleUpdateTotalSpoons}
             />
 
             {checkIns.length > 0 && (
@@ -296,7 +363,7 @@ export default function App() {
 
       </main>
 
-      {/* FAB */}
+      {/* FAB - Hidden in Recovery */}
       {view === 'dashboard' && (
         <div className="absolute bottom-24 right-6 z-30">
           <button
@@ -309,34 +376,36 @@ export default function App() {
         </div>
       )}
 
-      {/* Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-[#0f172a]/95 backdrop-blur-md border-t border-slate-800 max-w-lg mx-auto z-40">
-        <div className="flex justify-around p-4">
-          <button 
-            onClick={() => setView('dashboard')}
-            className={`flex flex-col items-center gap-1 ${view === 'dashboard' ? 'text-calm-green' : 'text-slate-500'}`}
-          >
-            <Home size={24} />
-            <span className="text-[10px]">Accueil</span>
-          </button>
-          
-          <button 
-            onClick={() => setView('regulation')}
-            className={`flex flex-col items-center gap-1 ${view === 'regulation' ? 'text-calm-green' : 'text-slate-500'}`}
-          >
-            <Wind size={24} />
-            <span className="text-[10px]">Outils</span>
-          </button>
+      {/* Nav - Hidden in Recovery */}
+      {view !== 'recovery' && (
+        <nav className="fixed bottom-0 left-0 right-0 bg-[#0f172a]/95 backdrop-blur-md border-t border-slate-800 max-w-lg mx-auto z-40">
+          <div className="flex justify-around p-4">
+            <button 
+              onClick={() => setView('dashboard')}
+              className={`flex flex-col items-center gap-1 ${view === 'dashboard' ? 'text-calm-green' : 'text-slate-500'}`}
+            >
+              <Home size={24} />
+              <span className="text-[10px]">Accueil</span>
+            </button>
+            
+            <button 
+              onClick={() => setView('regulation')}
+              className={`flex flex-col items-center gap-1 ${view === 'regulation' ? 'text-calm-green' : 'text-slate-500'}`}
+            >
+              <Wind size={24} />
+              <span className="text-[10px]">Outils</span>
+            </button>
 
-          <button 
-            onClick={() => setView('history')}
-            className={`flex flex-col items-center gap-1 ${view === 'history' ? 'text-calm-green' : 'text-slate-500'}`}
-          >
-            <BarChart3 size={24} />
-            <span className="text-[10px]">Suivi</span>
-          </button>
-        </div>
-      </nav>
+            <button 
+              onClick={() => setView('history')}
+              className={`flex flex-col items-center gap-1 ${view === 'history' ? 'text-calm-green' : 'text-slate-500'}`}
+            >
+              <BarChart3 size={24} />
+              <span className="text-[10px]">Suivi</span>
+            </button>
+          </div>
+        </nav>
+      )}
 
       {showCheckIn && (
         <CheckInForm 
@@ -346,5 +415,13 @@ export default function App() {
       )}
 
     </div>
+  );
+};
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

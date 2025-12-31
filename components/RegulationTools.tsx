@@ -1,8 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Wind, Eye, Music, Waves, Zap, X, Droplets } from 'lucide-react';
+import { Wind, Eye, Music, Waves, Zap, X, Droplets, Fish, Brain, Users, Heart, Sun, ListFilter, PlayCircle, BookOpen } from 'lucide-react';
+
+type Category = 'all' | 'cognitive' | 'social' | 'sensory' | 'emotional';
+
+interface Regulator {
+  id: string;
+  category: Exclude<Category, 'all'>;
+  text: string;
+}
+
+const REGULATORS: Regulator[] = [
+  // Cognitif
+  { id: 'c1', category: 'cognitive', text: "Aucune décision aujourd’hui" },
+  { id: 'c2', category: 'cognitive', text: "Lister 3 choses et n'en faire qu'une" },
+  { id: 'c3', category: 'cognitive', text: "Mode avion pendant 1 heure" },
+  { id: 'c4', category: 'cognitive', text: "Stop multi-tasking : une seule fenêtre ouverte" },
+  // Social
+  { id: 's1', category: 'social', text: "Annuler une interaction non essentielle" },
+  { id: 's2', category: 'social', text: "Répondre par écrit uniquement" },
+  { id: 's3', category: 'social', text: "Dire non sans se justifier" },
+  { id: 's4', category: 'social', text: "Porter un casque/écouteurs en public" },
+  // Sensoriel
+  { id: 'se1', category: 'sensory', text: "Silence total 15 minutes" },
+  { id: 'se2', category: 'sensory', text: "Lumière basse ou éteinte" },
+  { id: 'se3', category: 'sensory', text: "S'allonger au sol (Grounding)" },
+  { id: 'se4', category: 'sensory', text: "Manger quelque chose de croquant" },
+  // Émotionnel
+  { id: 'e1', category: 'emotional', text: "Respiration lente sans objectif" },
+  { id: 'e2', category: 'emotional', text: "Marche sans téléphone" },
+  { id: 'e3', category: 'emotional', text: "Regarder une vidéo réconfortante" },
+  { id: 'e4', category: 'emotional', text: "Écrire tout ce qui vient (Brain dump)" },
+];
 
 export const RegulationTools: React.FC = () => {
-  const [activeTool, setActiveTool] = useState<'none' | 'breathing' | 'visual' | 'brown-noise' | 'fractal' | 'jellyfish' | 'lavalamp'>('none');
+  const [activeTool, setActiveTool] = useState<'none' | 'breathing' | 'brown-noise' | 'fractal' | 'jellyfish' | 'lavalamp' | 'waves'>('none');
+  const [viewMode, setViewMode] = useState<'tools' | 'library'>('tools');
+  const [selectedCategory, setSelectedCategory] = useState<Category>('all');
 
   // --- Breath Logic ---
   const [breathPhase, setBreathPhase] = useState('Inspirer');
@@ -97,7 +130,27 @@ export const RegulationTools: React.FC = () => {
     </div>
   );
 
-  // --- Active Tool Views ---
+  const getCategoryColor = (cat: string) => {
+    switch(cat) {
+        case 'cognitive': return 'border-blue-500/30 bg-blue-500/10 text-blue-200';
+        case 'social': return 'border-green-500/30 bg-green-500/10 text-green-200';
+        case 'sensory': return 'border-orange-500/30 bg-orange-500/10 text-orange-200';
+        case 'emotional': return 'border-pink-500/30 bg-pink-500/10 text-pink-200';
+        default: return 'border-slate-700 bg-slate-800';
+    }
+  };
+
+  const getCategoryIcon = (cat: string) => {
+      switch(cat) {
+          case 'cognitive': return <Brain size={16} className="text-blue-400"/>;
+          case 'social': return <Users size={16} className="text-green-400"/>;
+          case 'sensory': return <Sun size={16} className="text-orange-400"/>; // Sun as simplified sensory input
+          case 'emotional': return <Heart size={16} className="text-pink-400"/>;
+          default: return <Zap size={16}/>;
+      }
+  };
+
+  // --- Active Tool Views (Overlays) ---
 
   if (activeTool === 'breathing') {
     return (
@@ -144,16 +197,18 @@ export const RegulationTools: React.FC = () => {
     );
   }
 
+  // --- Zen Videos ---
+
   if (activeTool === 'fractal') {
     return (
       <FullScreenContainer title="Immersion Fractale">
         <video 
           autoPlay loop muted playsInline 
-          className="w-full h-full object-cover opacity-80"
-          src="https://cdn.pixabay.com/video/2020/06/18/42435-432247551_tiny.mp4"
+          className="w-full h-full object-cover opacity-90"
+          src="fractales.mp4"
         />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <p className="text-white/80 text-center px-4 font-light text-lg">Laissez votre regard suivre les lignes...</p>
+          <p className="text-white/80 text-center px-4 font-light text-lg">Suivez les motifs...</p>
         </div>
       </FullScreenContainer>
     );
@@ -165,9 +220,9 @@ export const RegulationTools: React.FC = () => {
         <video 
           autoPlay loop muted playsInline 
           className="w-full h-full object-cover"
-          src="https://cdn.pixabay.com/video/2019/04/09/22687-329432420_tiny.mp4"
+          src="meduses.mp4"
         />
-        <div className="absolute inset-0 bg-blue-900/20 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-blue-900/10 pointer-events-none"></div>
       </FullScreenContainer>
     );
   }
@@ -178,60 +233,162 @@ export const RegulationTools: React.FC = () => {
         <video 
           autoPlay loop muted playsInline 
           className="w-full h-full object-cover"
-          src="https://cdn.pixabay.com/video/2022/10/05/133682-757805178_tiny.mp4"
+          src="bulles.mp4"
         />
         <div className="absolute inset-0 bg-orange-900/10 pointer-events-none"></div>
       </FullScreenContainer>
     );
   }
 
-  // --- Menu Grid ---
+  if (activeTool === 'waves') {
+    return (
+      <FullScreenContainer title="Vagues Calmes">
+        <video 
+          autoPlay loop muted playsInline 
+          className="w-full h-full object-cover"
+          src="vagues.mp4"
+        />
+        <div className="absolute inset-0 bg-cyan-900/10 pointer-events-none"></div>
+      </FullScreenContainer>
+    );
+  }
+
+  // --- MAIN VIEW ---
 
   return (
-    <div className="grid grid-cols-1 gap-3">
-      
-      {/* Visuals - Zen Videos */}
-      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-2 mb-1">Vidéos Zen</h3>
-      <div className="grid grid-cols-2 gap-3">
-        <ToolCard 
-          icon={<Eye size={24} className="text-purple-300" />} 
-          title="Fractales" 
-          desc="Encre fluide"
-          color="bg-purple-500/20"
-          onClick={() => setActiveTool('fractal')}
-        />
-        <ToolCard 
-          icon={<Waves size={24} className="text-blue-300" />} 
-          title="Méduses" 
-          desc="Mouvement lent"
-          color="bg-blue-500/20"
-          onClick={() => setActiveTool('jellyfish')}
-        />
-         <ToolCard 
-          icon={<Droplets size={24} className="text-pink-300" />} 
-          title="Lampe Lave" 
-          desc="Bulles & Huile"
-          color="bg-pink-500/20"
-          onClick={() => setActiveTool('lavalamp')}
-        />
-      </div>
+    <div className="flex flex-col gap-4">
+        
+        {/* Toggle Tabs */}
+        <div className="bg-slate-800 p-1 rounded-xl flex gap-1">
+            <button 
+                onClick={() => setViewMode('tools')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${viewMode === 'tools' ? 'bg-slate-600 text-white shadow' : 'text-gray-400 hover:text-gray-200'}`}
+            >
+                <PlayCircle size={16} />
+                Outils Immédiats
+            </button>
+            <button 
+                onClick={() => setViewMode('library')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${viewMode === 'library' ? 'bg-slate-600 text-white shadow' : 'text-gray-400 hover:text-gray-200'}`}
+            >
+                <BookOpen size={16} />
+                Bibliothèque
+            </button>
+        </div>
 
-      {/* Audio & Breath */}
-      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-1">Audio & Corps</h3>
-      <ToolCard 
-        icon={<Music size={24} className="text-orange-300" />} 
-        title="Bruit Brun" 
-        desc="Masquage sonore profond"
-        color="bg-orange-500/20"
-        onClick={() => setActiveTool('brown-noise')}
-      />
-      <ToolCard 
-        icon={<Wind size={24} className="text-calm-green" />} 
-        title="Respiration" 
-        desc="Cohérence cardiaque (4-4-4)"
-        color="bg-green-500/20"
-        onClick={() => setActiveTool('breathing')}
-      />
+        {viewMode === 'tools' ? (
+            <div className="grid grid-cols-1 gap-3 animate-fade-in">
+            {/* Visuals - Zen Videos */}
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-2 mb-1">Vidéos Zen</h3>
+            <div className="grid grid-cols-2 gap-3">
+                <ToolCard 
+                icon={<Eye size={24} className="text-purple-300" />} 
+                title="Fractales" 
+                desc="Hypnotique"
+                color="bg-purple-500/20"
+                onClick={() => setActiveTool('fractal')}
+                />
+                <ToolCard 
+                icon={<Fish size={24} className="text-blue-300" />} 
+                title="Méduses" 
+                desc="Lenteur"
+                color="bg-blue-500/20"
+                onClick={() => setActiveTool('jellyfish')}
+                />
+                <ToolCard 
+                icon={<Droplets size={24} className="text-pink-300" />} 
+                title="Bulles" 
+                desc="Lampe lave"
+                color="bg-pink-500/20"
+                onClick={() => setActiveTool('lavalamp')}
+                />
+                <ToolCard 
+                icon={<Waves size={24} className="text-cyan-300" />} 
+                title="Vagues" 
+                desc="Rythme naturel"
+                color="bg-cyan-500/20"
+                onClick={() => setActiveTool('waves')}
+                />
+            </div>
+
+            {/* Audio & Breath */}
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-1">Audio & Corps</h3>
+            <ToolCard 
+                icon={<Music size={24} className="text-orange-300" />} 
+                title="Bruit Brun" 
+                desc="Silence mental"
+                color="bg-orange-500/20"
+                onClick={() => setActiveTool('brown-noise')}
+            />
+            <ToolCard 
+                icon={<Wind size={24} className="text-calm-green" />} 
+                title="Respiration" 
+                desc="4-4-4"
+                color="bg-green-500/20"
+                onClick={() => setActiveTool('breathing')}
+            />
+            </div>
+        ) : (
+            <div className="animate-fade-in space-y-4">
+                {/* Filters */}
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <button 
+                        onClick={() => setSelectedCategory('all')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border ${selectedCategory === 'all' ? 'bg-white text-slate-900 border-white' : 'bg-slate-800 text-gray-400 border-slate-700'}`}
+                    >
+                        Tout
+                    </button>
+                    <button 
+                        onClick={() => setSelectedCategory('cognitive')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border flex items-center gap-1 ${selectedCategory === 'cognitive' ? 'bg-blue-500/20 text-blue-200 border-blue-500/50' : 'bg-slate-800 text-gray-400 border-slate-700'}`}
+                    >
+                        <Brain size={12} /> Cognitif
+                    </button>
+                    <button 
+                        onClick={() => setSelectedCategory('social')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border flex items-center gap-1 ${selectedCategory === 'social' ? 'bg-green-500/20 text-green-200 border-green-500/50' : 'bg-slate-800 text-gray-400 border-slate-700'}`}
+                    >
+                        <Users size={12} /> Social
+                    </button>
+                    <button 
+                        onClick={() => setSelectedCategory('sensory')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border flex items-center gap-1 ${selectedCategory === 'sensory' ? 'bg-orange-500/20 text-orange-200 border-orange-500/50' : 'bg-slate-800 text-gray-400 border-slate-700'}`}
+                    >
+                        <Sun size={12} /> Sensoriel
+                    </button>
+                    <button 
+                        onClick={() => setSelectedCategory('emotional')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border flex items-center gap-1 ${selectedCategory === 'emotional' ? 'bg-pink-500/20 text-pink-200 border-pink-500/50' : 'bg-slate-800 text-gray-400 border-slate-700'}`}
+                    >
+                        <Heart size={12} /> Émotionnel
+                    </button>
+                </div>
+
+                {/* Library Grid */}
+                <div className="grid grid-cols-1 gap-2">
+                    {REGULATORS.filter(r => selectedCategory === 'all' || r.category === selectedCategory).map((reg) => (
+                        <div 
+                            key={reg.id}
+                            className={`p-4 rounded-xl border flex items-start gap-3 transition-transform active:scale-[0.99] ${getCategoryColor(reg.category)}`}
+                        >
+                            <div className="mt-0.5 opacity-80">
+                                {getCategoryIcon(reg.category)}
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium leading-relaxed">{reg.text}</p>
+                                <p className="text-[10px] uppercase tracking-wider opacity-60 mt-1 font-bold">{reg.category === 'sensory' ? 'Sensoriel' : reg.category === 'social' ? 'Social' : reg.category === 'cognitive' ? 'Cognitif' : 'Émotionnel'}</p>
+                            </div>
+                        </div>
+                    ))}
+                    
+                    {REGULATORS.filter(r => selectedCategory === 'all' || r.category === selectedCategory).length === 0 && (
+                        <div className="text-center py-8 text-gray-500 text-sm">
+                            Aucune stratégie trouvée pour cette catégorie.
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
 
     </div>
   );

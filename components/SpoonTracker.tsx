@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Zap, Lock, Settings, RefreshCw, Coffee, Phone, Briefcase, ShowerHead, Utensils, ShoppingCart, Plus, Trash2, Star, Minus, LayoutGrid, Bus, FileText, Package } from 'lucide-react';
 import { Activity } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { subscribeToActivities, addActivityToDb, updateActivityInDb, deleteActivityFromDb } from '../services/db';
 
 interface SpoonTrackerProps {
   total: number;
@@ -22,6 +24,7 @@ const DEFAULT_ACTIVITIES: Activity[] = [
 ];
 
 export const SpoonTracker: React.FC<SpoonTrackerProps> = ({ total, remaining, onUpdate, onUpdateTotal }) => {
+  const { currentUser } = useAuth();
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
   
@@ -31,23 +34,21 @@ export const SpoonTracker: React.FC<SpoonTrackerProps> = ({ total, remaining, on
   const [newActCritical, setNewActCritical] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('btd_activities');
-    if (saved) {
-      try {
-        setActivities(JSON.parse(saved));
-      } catch (e) {
-        setActivities(DEFAULT_ACTIVITIES);
-      }
-    } else {
-      setActivities(DEFAULT_ACTIVITIES);
-    }
-  }, []);
+    if (!currentUser) return;
+    
+    const unsubscribe = subscribeToActivities(currentUser.uid, (data) => {
+        if (data.length === 0) {
+            // Initial seed if empty
+            DEFAULT_ACTIVITIES.forEach(act => {
+                addActivityToDb(currentUser.uid, act);
+            });
+        } else {
+            setActivities(data);
+        }
+    });
 
-  useEffect(() => {
-    if (activities.length > 0) {
-      localStorage.setItem('btd_activities', JSON.stringify(activities));
-    }
-  }, [activities]);
+    return () => unsubscribe();
+  }, [currentUser]);
 
   const isLowEnergy = remaining <= 2;
 
@@ -78,8 +79,8 @@ export const SpoonTracker: React.FC<SpoonTrackerProps> = ({ total, remaining, on
 
   // --- Management Functions ---
 
-  const addActivity = () => {
-    if (!newActName.trim()) return;
+  const addActivity = async () => {
+    if (!newActName.trim() || !currentUser) return;
     const newActivity: Activity = {
       id: crypto.randomUUID(),
       name: newActName,
@@ -88,23 +89,23 @@ export const SpoonTracker: React.FC<SpoonTrackerProps> = ({ total, remaining, on
       isPinned: true, // Auto pin custom activities
       icon: 'custom'
     };
-    setActivities([...activities, newActivity]);
+    await addActivityToDb(currentUser.uid, newActivity);
     setNewActName('');
     setNewActCost(1);
     setNewActCritical(false);
   };
 
-  const togglePin = (id: string) => {
-    setActivities(activities.map(a => 
-      a.id === id ? { ...a, isPinned: !a.isPinned } : a
-    ));
+  const togglePin = async (id: string) => {
+    if (!currentUser) return;
+    const activity = activities.find(a => a.id === id);
+    if (activity) {
+        await updateActivityInDb(currentUser.uid, { ...activity, isPinned: !activity.isPinned });
+    }
   };
 
-  const deleteCustomActivity = (id: string) => {
-    // Only allow hard deleting if it's custom, otherwise just unpin?
-    // For simplicity, we allow deleting any from the list, or we could just reset defaults.
-    // Let's simple remove from list.
-    setActivities(activities.filter(a => a.id !== id));
+  const deleteCustomActivity = async (id: string) => {
+    if (!currentUser) return;
+    await deleteActivityFromDb(currentUser.uid, id);
   };
 
   // Filter activities for dashboard (only pinned)
