@@ -25,14 +25,14 @@ import {
 } from './services/db';
 
 // Wrapper component to handle content once Auth is initialized
+// ... (gardez vos imports tels quels)
+
 const AppContent = () => {
   const { currentUser } = useAuth();
-  console.log("L'application démarre ! User est :", currentUser);
   const [view, setView] = useState<ViewState>('auth'); 
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
   
-  // Data State
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [spoons, setSpoons] = useState<DailySpoons>({ date: new Date().toDateString(), total: 10, remaining: 10 });
   
@@ -40,53 +40,16 @@ const AppContent = () => {
   const [loadingInsight, setLoadingInsight] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
-  // Firestore Subscriptions
+  // UN SEUL useEffect ICI, PROPRE ET BIEN FERMÉ
   useEffect(() => {
-    // Si pas de currentUser, on ne fait rien, le rendu affichera AuthScreen
     if (!currentUser) {
       setLoadingData(false);
+      setView('auth');
       return;
     }
 
     setLoadingData(true);
-
-    // Sécurité pour ne pas rester bloqué
     const timeout = setTimeout(() => setLoadingData(false), 5000);
-
-    // 1. Vérifier l'Onboarding
-    checkOnboardingStatus(currentUser.uid).then((seen) => {
-      if (!seen) setView('onboarding');
-      else setView('dashboard');
-    });
-
-    // 2. S'abonner aux Check-ins
-    const unsubscribeCheckIns = subscribeToCheckIns(currentUser.uid, (data) => {
-      setCheckIns(data);
-    });
-
-    // 3. S'abonner aux Cuillères
-    const unsubscribeSpoons = subscribeToSpoons(currentUser.uid, (data) => {
-      if (data) {
-        if (data.date !== new Date().toDateString()) {
-          const newSpoons = { date: new Date().toDateString(), total: data.total || 10, remaining: data.total || 10 };
-          saveSpoonsToDb(currentUser.uid, newSpoons);
-        } else {
-          setSpoons(data);
-        }
-      } else {
-        const defaultSpoons = { date: new Date().toDateString(), total: 10, remaining: 10 };
-        saveSpoonsToDb(currentUser.uid, defaultSpoons);
-      }
-      setLoadingData(false);
-      clearTimeout(timeout);
-    });
-
-    return () => {
-      unsubscribeCheckIns();
-      unsubscribeSpoons();
-      clearTimeout(timeout);
-    };
-  }, [currentUser]);
 
     // 1. Check Onboarding
     checkOnboardingStatus(currentUser.uid).then((seen) => {
@@ -102,27 +65,28 @@ const AppContent = () => {
     // 3. Subscribe to Spoons
     const unsubscribeSpoons = subscribeToSpoons(currentUser.uid, (data) => {
       if (data) {
-        // Reset daily logic if needed
         if (data.date !== new Date().toDateString()) {
            const newSpoons = { date: new Date().toDateString(), total: data.total || 10, remaining: data.total || 10 };
            saveSpoonsToDb(currentUser.uid, newSpoons);
-           // Subscription will update state automatically
         } else {
            setSpoons(data);
         }
       } else {
-        // Init default spoons if doesn't exist
         const defaultSpoons = { date: new Date().toDateString(), total: 10, remaining: 10 };
         saveSpoonsToDb(currentUser.uid, defaultSpoons);
       }
       setLoadingData(false);
+      clearTimeout(timeout);
     });
 
     return () => {
       unsubscribeCheckIns();
       unsubscribeSpoons();
+      clearTimeout(timeout);
     };
-  }, [currentUser]);
+  }, [currentUser]); // FIN DU SEUL ET UNIQUE EFFECT
+
+  // La suite du code (fetchInsight, etc.)
 
   // Fetch insight when dashboard is viewed and we have data
   useEffect(() => {
