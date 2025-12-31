@@ -1,4 +1,4 @@
-limport React, { useState } from 'react';
+import React, { useState } from 'react';
 import { ArrowRight, Mail, Lock, AlertCircle, Loader } from 'lucide-react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
