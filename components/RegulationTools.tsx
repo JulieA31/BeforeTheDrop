@@ -207,9 +207,7 @@ export const RegulationTools: React.FC = () => {
           className="w-full h-full object-cover opacity-90"
           src="/hypnose.mp4"
         />
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <p className="text-white/80 text-center px-4 font-light text-lg">Suivez les motifs...</p>
-        </div>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none"></div>
       </FullScreenContainer>
     );
   }
