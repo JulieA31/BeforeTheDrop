@@ -41,28 +41,51 @@ const AppContent = () => {
 
   // Firestore Subscriptions
   useEffect(() => {
+    // Si pas de currentUser, on ne fait rien, le rendu affichera AuthScreen
     if (!currentUser) {
-      setView('auth');
+      setLoadingData(false);
       return;
     }
 
     setLoadingData(true);
-    
-    // SÉCURITÉ : Force l'arrêt du chargement après 5 secondes quoi qu'il arrive
-    const timer = setTimeout(() => {
-      setLoadingData(false);
-    }, 5000);
 
-    // ... le reste de votre code (checkOnboardingStatus, etc.) ...
+    // Sécurité pour ne pas rester bloqué
+    const timeout = setTimeout(() => setLoadingData(false), 5000);
+
+    // 1. Vérifier l'Onboarding
+    checkOnboardingStatus(currentUser.uid).then((seen) => {
+      if (!seen) setView('onboarding');
+      else setView('dashboard');
+    });
+
+    // 2. S'abonner aux Check-ins
+    const unsubscribeCheckIns = subscribeToCheckIns(currentUser.uid, (data) => {
+      setCheckIns(data);
+    });
+
+    // 3. S'abonner aux Cuillères
+    const unsubscribeSpoons = subscribeToSpoons(currentUser.uid, (data) => {
+      if (data) {
+        if (data.date !== new Date().toDateString()) {
+          const newSpoons = { date: new Date().toDateString(), total: data.total || 10, remaining: data.total || 10 };
+          saveSpoonsToDb(currentUser.uid, newSpoons);
+        } else {
+          setSpoons(data);
+        }
+      } else {
+        const defaultSpoons = { date: new Date().toDateString(), total: 10, remaining: 10 };
+        saveSpoonsToDb(currentUser.uid, defaultSpoons);
+      }
+      setLoadingData(false);
+      clearTimeout(timeout);
+    });
 
     return () => {
-      clearTimeout(timer); // On nettoie le timer
       unsubscribeCheckIns();
       unsubscribeSpoons();
+      clearTimeout(timeout);
     };
   }, [currentUser]);
-
-    setLoadingData(true);
 
     // 1. Check Onboarding
     checkOnboardingStatus(currentUser.uid).then((seen) => {
@@ -195,10 +218,12 @@ const AppContent = () => {
 
   // --- Views Handling ---
 
-  if (view === 'auth') {
-    return <AuthScreen onLoginSuccess={() => { /* Effect will handle transition */ }} />;
+  // 1. SI PAS DE USER : On affiche l'écran de login immédiatement
+  if (!currentUser) {
+    return <AuthScreen onLoginSuccess={() => setView('dashboard')} />;
   }
 
+  // 2. SI USER MAIS EN CHARGEMENT : On affiche le spinner
   if (loadingData && view !== 'recovery' && view !== 'sensory-scan') {
     return (
       <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
@@ -207,10 +232,10 @@ const AppContent = () => {
     );
   }
 
+  // 3. SI ONBOARDING PAS FAIT
   if (view === 'onboarding') {
     return <Onboarding onFinish={handleOnboardingFinish} />;
   }
-
   // --- Main App ---
 
   return (
