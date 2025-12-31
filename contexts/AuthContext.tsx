@@ -26,7 +26,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={{ currentUser, loading }}>
-      {!loading && children}
+      {loading ? <div>Chargement de l'application (Vérification Firebase...)</div> : children}
     </AuthContext.Provider>
   );
-};
