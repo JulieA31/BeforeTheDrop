@@ -33,6 +33,7 @@ const AppContent = () => {
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
   
+  // Data State
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [spoons, setSpoons] = useState<DailySpoons>({ date: new Date().toDateString(), total: 10, remaining: 10 });
   
@@ -40,7 +41,7 @@ const AppContent = () => {
   const [loadingInsight, setLoadingInsight] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
-  // UN SEUL useEffect ICI, PROPRE ET BIEN FERMÉ
+  // GESTION UNIQUE DES ABONNEMENTS ET DE L'ONBOARDING
   useEffect(() => {
     if (!currentUser) {
       setLoadingData(false);
@@ -49,20 +50,21 @@ const AppContent = () => {
     }
 
     setLoadingData(true);
+    // Sécurité : on arrête le spinner après 5s quoi qu'il arrive
     const timeout = setTimeout(() => setLoadingData(false), 5000);
 
-    // 1. Check Onboarding
+    // 1. Vérifier si l'utilisateur doit voir l'onboarding
     checkOnboardingStatus(currentUser.uid).then((seen) => {
       if (!seen) setView('onboarding');
       else setView('dashboard');
     });
 
-    // 2. Subscribe to CheckIns
+    // 2. S'abonner aux Check-ins
     const unsubscribeCheckIns = subscribeToCheckIns(currentUser.uid, (data) => {
       setCheckIns(data);
     });
 
-    // 3. Subscribe to Spoons
+    // 3. S'abonner aux Cuillères
     const unsubscribeSpoons = subscribeToSpoons(currentUser.uid, (data) => {
       if (data) {
         if (data.date !== new Date().toDateString()) {
@@ -84,21 +86,17 @@ const AppContent = () => {
       unsubscribeSpoons();
       clearTimeout(timeout);
     };
-  }, [currentUser]); // FIN DU SEUL ET UNIQUE EFFECT
+  }, [currentUser]);
 
-  // La suite du code (fetchInsight, etc.)
-
-  // Fetch insight when dashboard is viewed and we have data
+  // Récupérer les conseils de l'IA quand on est sur le dashboard
   useEffect(() => {
     if (view === 'dashboard' && checkIns.length > 0 && !insight) {
       fetchInsight();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, checkIns.length]);
+  }, [view, checkIns.length, insight]);
 
   const fetchInsight = async () => {
     setLoadingInsight(true);
-    // Sort logic handled by Firestore query usually, but double check
     const result = await getGentleInsight(checkIns.slice(0, 5));
     setInsight(result);
     setLoadingInsight(false);
