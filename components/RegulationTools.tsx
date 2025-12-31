@@ -281,7 +281,7 @@ export const RegulationTools: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
                 <ToolCard 
                 icon={<Eye size={24} className="text-purple-300" />} 
-                title="Fractales" 
+                title="Immersion" 
                 desc="Hypnotique"
                 color="bg-purple-500/20"
                 onClick={() => setActiveTool('fractal')}
