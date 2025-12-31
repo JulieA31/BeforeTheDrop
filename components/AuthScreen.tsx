@@ -47,7 +47,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-start p-6 pt-20 text-center animate-fade-in relative overflow-hidden">
+    <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-start p-6 pt-40 text-center animate-fade-in relative overflow-hidden">
       
       {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-20">
