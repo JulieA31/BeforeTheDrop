@@ -47,6 +47,22 @@ const AppContent = () => {
     }
 
     setLoadingData(true);
+    
+    // SÉCURITÉ : Force l'arrêt du chargement après 5 secondes quoi qu'il arrive
+    const timer = setTimeout(() => {
+      setLoadingData(false);
+    }, 5000);
+
+    // ... le reste de votre code (checkOnboardingStatus, etc.) ...
+
+    return () => {
+      clearTimeout(timer); // On nettoie le timer
+      unsubscribeCheckIns();
+      unsubscribeSpoons();
+    };
+  }, [currentUser]);
+
+    setLoadingData(true);
 
     // 1. Check Onboarding
     checkOnboardingStatus(currentUser.uid).then((seen) => {
