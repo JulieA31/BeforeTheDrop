@@ -220,7 +220,7 @@ export const RegulationTools: React.FC = () => {
         <video 
           autoPlay loop muted playsInline 
           className="w-full h-full object-cover"
-          src="/meduses.mp4"
+          src="/public/meduses.mp4"
         />
         <div className="absolute inset-0 bg-blue-900/10 pointer-events-none"></div>
       </FullScreenContainer>
