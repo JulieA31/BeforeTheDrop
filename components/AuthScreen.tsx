@@ -62,13 +62,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           className="scale-[0.8]"
         />
         
-        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-calm-green mb-2">
-          Before the Drop
-        </h1>
-        <p className="text-gray-400 text-xs mb-8">
-          {isLogin ? "Bon retour parmi nous." : "Créer un espace sûr pour votre énergie."}
-        </p>
-
+       
         <form onSubmit={handleSubmit} className="w-full space-y-4">
           
           {error && (
