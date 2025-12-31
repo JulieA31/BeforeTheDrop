@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Plus, Home, Sparkles, Wind, Activity, TriangleAlert, LogOut, RefreshCcw } from 'lucide-react';
+import { BarChart3, Plus, Home, Sparkles, Wind, Activity, TriangleAlert, LogOut, RefreshCcw, Cloud } from 'lucide-react';
 import { CheckIn, ViewState, AppStatus, DailySpoons } from './types';
 import { CheckInForm } from './components/CheckInForm';
 import { Gauge } from './components/Gauge';
@@ -191,7 +191,7 @@ const AppContent = () => {
                  <span className="text-xs">Scan Corps</span>
                </button>
                <button onClick={() => setView('regulation')} className="bg-slate-800 p-4 rounded-xl flex flex-col items-center gap-2">
-                 <Wind className="text-green-400" />
+                 <Cloud className="text-green-400" />
                  <span className="text-xs">Respiration</span>
                </button>
             </div>
@@ -207,7 +207,7 @@ const AppContent = () => {
           <Home size={24} />
         </button>
         <button onClick={() => setView('regulation')} className={view === 'regulation' ? 'text-green-400' : 'text-gray-500'}>
-          <Wind size={24} />
+          <Cloud size={24} />
         </button>
       </nav>
 
