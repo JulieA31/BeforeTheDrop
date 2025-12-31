@@ -201,11 +201,11 @@ export const RegulationTools: React.FC = () => {
 
   if (activeTool === 'fractal') {
     return (
-      <FullScreenContainer title="Immersion Fractale">
+      <FullScreenContainer title="Immersion Hypnotique">
         <video 
           autoPlay loop muted playsInline 
           className="w-full h-full object-cover opacity-90"
-          src="fractales.mp4"
+          src="/hypnose.mp4"
         />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <p className="text-white/80 text-center px-4 font-light text-lg">Suivez les motifs...</p>
@@ -220,7 +220,7 @@ export const RegulationTools: React.FC = () => {
         <video 
           autoPlay loop muted playsInline 
           className="w-full h-full object-cover"
-          src="meduses.mp4"
+          src="/meduses.mp4"
         />
         <div className="absolute inset-0 bg-blue-900/10 pointer-events-none"></div>
       </FullScreenContainer>
@@ -233,7 +233,7 @@ export const RegulationTools: React.FC = () => {
         <video 
           autoPlay loop muted playsInline 
           className="w-full h-full object-cover"
-          src="bulles.mp4"
+          src="/bulles.mp4"
         />
         <div className="absolute inset-0 bg-orange-900/10 pointer-events-none"></div>
       </FullScreenContainer>
@@ -246,7 +246,7 @@ export const RegulationTools: React.FC = () => {
         <video 
           autoPlay loop muted playsInline 
           className="w-full h-full object-cover"
-          src="vagues.mp4"
+          src="/vagues.mp4"
         />
         <div className="absolute inset-0 bg-cyan-900/10 pointer-events-none"></div>
       </FullScreenContainer>
